@@ -13,14 +13,13 @@
 # installation is successful.
 #
 # USAGE
-#   ./install_sct [-h] [-i] [-y] [-d] [-b] [-v]
+#   ./install_sct [-h] [-i] [-y] [-c] [-v]
 #
 # OPTIONS
 #  -h   Show this help
 #  -i   Install in-place; this is the default when working from git.
 #  -y   Install without interruption with 'yes' as default answer
-#  -d   Prevent the (re)-installation of the data/ directory
-#  -b   Prevent the (re)-installation of the SCT binaries files
+#  -c   Clean previous installation (by default, data/ et al. are not redownloaded)
 #  -v   Full verbose
 #
 #
@@ -353,9 +352,8 @@ done
 
 SCT_INSTALL_TYPE=""
 NONINTERACTIVE=""
-NO_DATA_INSTALL=""
-NO_SCT_BIN_INSTALL=""
-while getopts ":iydbvh" opt; do
+CLEAN=""
+while getopts ":iycvh" opt; do
   case $opt in
   i)
     SCT_INSTALL_TYPE="in-place"
@@ -364,13 +362,10 @@ while getopts ":iydbvh" opt; do
     echo " non-interactive mode"
     NONINTERACTIVE="yes"
     ;;
-  d)
-    echo " data directory will not be (re)-installed"
-    NO_DATA_INSTALL="yes"
-    ;;
-  b)
-    echo " SCT binaries will not be (re)-installed "
-    NO_SCT_BIN_INSTALL="yes"
+  c)
+    echo " SCT binaries will be re-installed"
+    echo " data directory will be re-installed"
+    CLEAN="yes"
     ;;
   v)
     echo " Full verbose!"
@@ -563,25 +558,32 @@ unset PYTHONPATH
 export PYTHONNOUSERSITE=1
 
 # Remove old python folder
-print info "Installing conda..."
-run rm -rf "$SCT_DIR/$PYTHON_DIR"
-run mkdir -p "$SCT_DIR/$PYTHON_DIR"
+if [ -n "CLEAN" ]; then
+  run rm -rf $SCT_DIR/$PYTHON_DIR
+fi
 
-# Download miniconda
-case $OS in
-linux*)
-  download "$TMP_DIR/"miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-  ;;
-osx)
-  download "$TMP_DIR/"miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
-  ;;
-esac
+if [ ! -x "$SCT_DIR/$PYTHON_DIR"/bin/conda ]; then
+  print info "Installing conda..."
+  run mkdir -p $SCT_DIR/$PYTHON_DIR
 
-# Run conda installer
-run bash "$TMP_DIR/miniconda.sh" -p "$SCT_DIR/$PYTHON_DIR" -b -f
+  # Download miniconda
+  case "$OS" in
+  linux*)
+    download "$TMP_DIR/"miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    ;;
+  osx)
+    download "$TMP_DIR/"miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
+    ;;
+  esac
 
-# create py3.6 venv (for Keras/TF compatibility with Centos7, see issue #2270)
-python/bin/conda create -y -n venv_sct python=3.6
+  # Run conda installer
+  run bash "$TMP_DIR/miniconda.sh" -p "$SCT_DIR/$PYTHON_DIR" -b -f
+fi
+
+if ! ( "$SCT_DIR/$PYTHON_DIR"/bin/conda info -e | awk '{print $1}' | grep venv_sct >/dev/null ); then
+  # create py3.6 venv (for Keras/TF compatibility with Centos7, see issue #2270)
+  "$SCT_DIR/$PYTHON_DIR"/bin/conda create -y -n venv_sct python=3.6
+fi
 
 # activate miniconda
 source python/etc/profile.d/conda.sh
@@ -640,29 +642,38 @@ export PATH="$SCT_DIR/$BIN_DIR:$PATH"
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Install binaries
-if [[ -n "$NO_SCT_BIN_INSTALL" ]]; then
-  print warning "WARNING: SCT binaries will not be (re)-installed"
-else
+if [ -n "$CLEAN" ]; then
+  rm "${SCT_DIR}/${BIN_DIR}/isct_*"
+fi
+if [ ! -x "${SCT_DIR}/${BIN_DIR}/isct_antsSliceRegularizedRegistration" ]; then
   print info "Installing binaries..."
+  # this if is a bit hacky but it's the best we've got until we migrate
+  # these to a better package management system (one with built in caching)
   run sct_download_data -d "binaries_${OS}" -o "${SCT_DIR}/${BIN_DIR}" -k
 fi
+
 print info "All requirements installed!"
 
 # Install data
-if [[ -n "$NO_DATA_INSTALL" ]]; then
-  print warning "WARNING: data/ will not be (re)-install"
-else
-  # Download data
-  print info "Installing data..."
+if [ -n "$CLEAN" ]; then
   run rm -rf "$SCT_DIR/$DATA_DIR"
-  run mkdir -p "$SCT_DIR/$DATA_DIR"
-  for data in PAM50 gm_model optic_models pmj_models deepseg_sc_models deepseg_gm_models deepseg_lesion_models c2c3_disc_models; do
-    run sct_download_data -d "$data" -o "$SCT_DIR/$DATA_DIR/$data"
-  done
 fi
 
-# Install deep learning models
-python -c 'import spinalcordtoolbox.deepseg.models; spinalcordtoolbox.deepseg.models.install_default_models()'
+print info "Installing data..."
+run mkdir -p "$SCT_DIR/$DATA_DIR"
+for data in PAM50 gm_model optic_models pmj_models deepseg_sc_models deepseg_gm_models deepseg_lesion_models c2c3_disc_models; do
+  if [ ! -d "$SCT_DIR/$DATA_DIR/$data" ]; then
+    run sct_download_data -d "$data" -o "$SCT_DIR/$DATA_DIR/$data"
+  fi
+done
+
+if [ -n "$CLEAN" ]; then
+  run rm -rf "$SCT_DIR/$DATA_DIR/deepseg_models"
+fi
+if [ ! -d "$SCT_DIR/$DATA_DIR/deepseg_models" ]; then
+  print info "Install deep learning models"
+  python -c 'import spinalcordtoolbox.deepseg.models; spinalcordtoolbox.deepseg.models.install_default_models()'
+fi
 
 
 # ----------------------------------------------------------------------------------------------------------------------
