@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [ master, release ]
-  pull_request:
-    branches: [ '*' ]
+    branches: [ master, release, ng/ci-gh-actions ]
+  #pull_request:
+  #  branches: [ '*' ]
   schedule:
     # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#onschedule
     # > Scheduled workflows run on the latest commit on the default or base branch
@@ -38,6 +38,7 @@ env:
 
 jobs:
   test:
+    continue-on-error: true
     strategy:
       matrix:
         include:
@@ -73,6 +74,7 @@ jobs:
         ./.ci.sh
 
   test-wsl:
+    continue-on-error: true
     # with the help of https://github.com/marketplace/actions/setup-wsl
     strategy:
       matrix:
@@ -112,6 +114,7 @@ jobs:
         ./.ci.sh
 
   test-nightlies:
+    continue-on-error: true
     strategy:
       matrix:
         include:
