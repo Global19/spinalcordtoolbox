@@ -11,7 +11,7 @@ shopt -s failglob # error if a glob doesn't find any files, instead of remaining
 export PIP_PROGRESS_BAR=off # disable pip's progress bar for the duration of CI
 
 echo Installing SCT
-./install_sct -y
+./install_sct -iy
 . ~/.bash_profile # load sct
 
 echo *** CHECK PATH ***
