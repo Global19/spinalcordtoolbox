@@ -8,8 +8,10 @@ set -eo pipefail  # exit if non-zero error is encountered (even in a pipeline)
 set -u            # exit if unset variables used
 shopt -s failglob # error if a glob doesn't find any files, instead of remaining unexpanded
 
+export PIP_PROGRESS_BAR=off # disable pip's progress bar for the duration of CI
+
 echo Installing SCT
-PIP_PROGRESS_BAR=off ./install_sct -y
+./install_sct -y
 
 echo *** CHECK PATH ***
 ls -lA bin  # Make sure all binaries and aliases are there
