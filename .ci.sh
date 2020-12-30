@@ -83,7 +83,7 @@ for tool in \
   command -v "$tool" || (echo "Missing tool: $tool"; exit 1)
 done
 
-source python/etc/profile.d/conda.sh  # to be able to call conda
+source "$SCT_DIR/python/etc/profile.d/conda.sh"  # to be able to call conda
 conda activate venv_sct  # reactivate conda for the pip install below
 
 echo *** UNIT TESTS ***
