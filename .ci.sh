@@ -12,7 +12,7 @@ export PIP_PROGRESS_BAR=off # disable pip's progress bar for the duration of CI
 
 echo Installing SCT
 ./install_sct -iy
-. ~/.bash_profile # load sct
+set +euo pipefail; . ~/.bash_profile; set -euo pipefail;  # load sct
 
 echo *** CHECK PATH ***
 # Make sure all binaries and aliases are there
