@@ -120,9 +120,10 @@ jobs:
             nightly: true
             # github runners come with dev-tools pre-installed
             #dependencies: ...
-          - name: macOS 11.0 (Big Sur)
-            os: macos-11.0
-            nightly: true
+          #- name: macOS 11.0 (Big Sur)
+          # # overloaded on Github currently
+          #  os: macos-11.0
+          #  nightly: true
           - name: ArchLinux
             os: ubuntu-18.04
             container: archlinux
